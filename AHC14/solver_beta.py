@@ -20,45 +20,141 @@ class Solver:
     def __init__(self,fields):
         self.fields=fields
         self.N=len(fields)
-    
-    def search(self,h,w):
+        
+        self.edges=self.make_edges()
+        
+
+    def xy2hash(self,x,y):
+        return y*self.N+x
+        
+    def make_edges(self):
+        edge=[{} for i in range(self.N*self.N)]
+        for h in range(self.N):
+            for w in range(self.N):
+                pos=self.xy2hash(w,h)
+                if pos//self.N!=0:
+                    edge[pos][pos-self.N]=0
+                if pos//self.N!=self.N-1:
+                    edge[pos][pos+self.N]=0
+                if pos%self.N!=0:
+                    edge[pos][pos-1]=0
+                if pos%self.N!=self.N-1:
+                    edge[pos][pos+1]=0
+                #ななめ
+                if pos//self.N!=0 and pos%self.N!=0:
+                    edge[pos][pos-self.N-1]=0
+                if pos//self.N!=0 and pos%self.N!=self.N-1:
+                    edge[pos][pos-self.N+1]=0
+                if pos//self.N!=self.N-1 and pos%self.N!=0:
+                    edge[pos][pos+self.N-1]=0
+                if pos//self.N!=self.N-1 and pos%self.N!=N-1:
+                    edge[pos][pos+self.N+1]=0                
+                
+        return edge
+
+    def search_box(self,h,w):
         #とりあえず上下左右の点を探して、あったら対角か一辺としてみていけばいいのでは
-        options=[]
-        for i in range(self.N):
-            if fields[i][w]==1 and i!=h:
-                options.append([i,w])
-            if fields[h][i]==1 and i!=w:
-                options.append([h,i])
-        while options:
-            hh,ww=options.pop(-1)
-            #対角とした場合
-            diag=abs(h-hh)+abs(w-ww)#どっちかはゼロにはなるはずなんだけど
-            if diag%2==0:#こうじゃないとほかの点が整数で表せない
-                hc,wc=(h+hh)//2,(w+ww)//2
-                if w==wc:
-                    if fields[hc][wc+diag//2]==1 and fields[hc][wc-diag//2]==0:
-                        fields[hc][wc-diag//2]=1
-                        ans.append([hc,wc-diag//2,h,w,hc,wc+diag//2,hh,ww])
-                    elif fields[hc][wc+diag//2]==0 and fields[hc][wc-diag//2]==1:
-                        fields[hc][wc+diag//2]=1
-                        ans.append([hc,wc+diag//2,h,w,hc,wc-diag//2,hh,ww])
-                else:
-                    if fields[hc+diag//2][wc]==1 and fields[hc-diag//2][wc]==0:
-                        fields[hc-diag//2][wc]=1
-                        ans.append([h,w,hh,ww,hc+diag//2,wc,hc-diag//2,wc])
-                    elif fields[hc+diag//2][wc]==0 and fields[hc-diag//2][wc]==1:
-                        fields[hc+diag//2][wc]=1
-                        ans.append([h,w,hh,ww,hc+diag//2,wc,hc-diag//2,wc])
+        #左右、上下で最初に当たるのを探す　同じ距離のものがあったら対角が決まるので
+        lr=[]
+        for n in range(h+1,self.N):
+            if fields[n][w]==1:
+                lr.append([n,w])
+                break
+        for n in range(h)[::-1]:
+            if fields[n][w]==1:
+                lr.append([n,w])
+                break
+        ud=[]
+        for n in range(w+1,self.N):
+            if fields[h][n]==1:
+                ud.append([h,n])
+                break
+        for n in range(w)[::-1]:
+            if fields[h][n]==1:
+                ud.append([h,n])
+                break
+        
+        r_sheld=[]
+        for i in range(1,min(h,w))[::-1]:
+            if fields[h-i][w-i]==1:
+                r_sheld.append([h-i,w-i])
+                break
+        for i in range(1,self.N-max(h,w)):
+            if fields[h+i][w+i]==1:
+                r_sheld.append([h+i,w+i])
+                break
+        l_sheld=[]
+        for i in range(1,min(h,self.N-w))[::-1]:
+            if fields[h-i][w+i]==1:
+                l_sheld.append([h-i,w-i])
+                break
+        for i in range(1,min(self.N-h,w)):
+            if fields[h+i][w-i]==1:
+                l_sheld.append([h+i,w-i])
+                break
+        
+        return lr,ud,r_sheld,l_sheld
+        
+    
+    def generate(self,h,w,lr,ud,r_sheld,l_sheld):
+        #pathを歩いてつぶしていかないといけない
+        for a,b in lr:
+            for c,d in ud:
+                #h,w,a,b,c,dから4つめの点がでる
+                #h,wから歩いて行ってedgeが使われていないことを確認しないといけない
+                nh,nw=h+(a-h),w+(d-w)
+                
+                if fields[nh][nw]==0 and fields[a][b]==1 and fields[c][d]==1:#仮想なのはnh,nwだけにしなきゃいけない
+                    yield [nh,nw,a,b,h,w,c,d]
+    
+    def check_edges(self,square):
+        roots=[]
+        for s in range(len(square)//2-1):
+            h,w,nh,nw=square[(2*s)%len(square)],square[(2*s+1)%len(square)],square[(2*s+2)%len(square)],square[(2*s+3)%len(square)]
+            h_dire=1 if nh-h>=0 else -1
+            w_dire=1 if nw-w>=0 else -1
+            for i in range(min(h,nh),max(h,nh)+1)[::h_dire]:
+                for j in range(min(w,nw),max(w,nw)+1)[::w_dire]:
+                    roots.append([i,j])
+                    if len(roots)>1 and roots[-2]==[i,j]:#折り返し地点で被る対策
+                        roots.pop(-1)
                     
+        for i in range(len(roots)-1):
+            s=roots[i][0]*self.N+roots[i][1]
+            t=roots[i+1][0]*self.N+roots[i+1][1]
+            if self.edges[min(s,t)][max(s,t)]==1:
+                return False
+        #ここ以下からpassした場合 変更を加える
+        for i in range(len(roots)-1):
+            s=roots[i][0]*self.N+roots[i][1]
+            t=roots[i+1][0]*self.N+roots[i+1][1]
+            self.edges[min(s,t)][max(s,t)]=1
+        for s in range(len(square)//2-1):
+            h,w,nh,nw=square[(2*s)%len(square)],square[(2*s+1)%len(square)],square[(2*s+2)%len(square)],square[(2*s+3)%len(square)]
+            self.fields[h][w]=1
+        
+        return square
+        
+        
 solver=Solver(fields)
 #solver.search(13,24)
 h=0
 ans=[]
-while time.time()-start_time<=1.7:
+count=0
+while time.time()-start_time<=1.5:
     h=(h+1)%N
     for w in range(N):
         if fields[h][w]==1:
-            solver.search(h,w)
+            lr,ud,r_sheld,l_sheld=solver.search_box(h,w)
+            squares=solver.generate(h,w,lr,ud,r_sheld,l_sheld)
+            passed=[]
+            for square in squares:
+                passed=solver.check_edges(square)
+            if passed:
+                ans.append(passed)
+                
+    count+=1
+#print(count)
 print(len(ans))
 for item in ans:
     print(*item)
