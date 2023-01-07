@@ -50,47 +50,7 @@ class Solver:
         return edge
 
     def search_box(self,h,w):
-        #左右、上下で最初に当たるのを探す　同じ距離のものがあったら対角が決まるので
-        #ななめも探すようにした
-        lr=[]
-        for n in range(h+1,self.N):
-            if fields[n][w]==1:
-                lr.append([n,w])
-                break
-        for n in range(h)[::-1]:
-            if fields[n][w]==1:
-                lr.append([n,w])
-                break
-        ud=[]
-        for n in range(w+1,self.N):
-            if fields[h][n]==1:
-                ud.append([h,n])
-                break
-        for n in range(w)[::-1]:
-            if fields[h][n]==1:
-                ud.append([h,n])
-                break
-        
-        r_sheld=[]
-        for i in range(1,min(h,w))[::-1]:
-            if fields[h-i][w-i]==1:
-                r_sheld.append([h-i,w-i])
-                break
-        for i in range(1,self.N-max(h,w)):
-            if fields[h+i][w+i]==1:
-                r_sheld.append([h+i,w+i])
-                break
-        l_sheld=[]
-        for i in range(1,min(h,self.N-w))[::-1]:
-            if fields[h-i][w+i]==1:
-                l_sheld.append([h-i,w-i])
-                break
-        for i in range(1,min(self.N-h,w)):
-            if fields[h+i][w-i]==1:
-                l_sheld.append([h+i,w-i])
-                break
-        
-        return lr,ud,r_sheld,l_sheld
+
         
     
     def generate(self,h,w,lr,ud,r_sheld,l_sheld):
@@ -121,7 +81,6 @@ class Solver:
             t=roots[i+1][0]*self.N+roots[i+1][1]
             if self.edges[min(s,t)][max(s,t)]==1:
                 return False
-        
         #ここ以下からpassした場合 変更を加える
         for i in range(len(roots)-1):
             s=roots[i][0]*self.N+roots[i][1]
